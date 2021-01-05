@@ -208,31 +208,13 @@ errors".format(args.config['key_file_location']))
     else:
         # If using oauth credentials, verify that all required keys are present
         credentials = args.config['oauth_credentials']
-
-        if not credentials.get('access_token'):
-            LOGGER.critical(
-                "tap-google-analytics: a valid access_token for the \
+        for key in ['access_token', 'refresh_token',
+                    'client_id', 'client_secret']:
+            if not credentials.get(key):
+                LOGGER.critical(
+                    f"tap-google-analytics: a valid {key} for the \
 oauth_credentials must be provided.")
-            sys.exit(1)
-
-        if not credentials.get('refresh_token'):
-            LOGGER.critical(
-                "tap-google-analytics: a valid refresh_token for the \
-oauth_credentials must be provided.")
-            sys.exit(1)
-
-        if not credentials.get('client_id'):
-            LOGGER.critical(
-                "tap-google-analytics: a valid client_id for the \
-oauth_credentials must be provided.")
-            sys.exit(1)
-
-        if not credentials.get('client_secret'):
-            LOGGER.critical(
-                "tap-google-analytics: a valid client_secret for the \
-oauth_credentials must be provided.")
-            sys.exit(1)
-
+                sys.exit(1)
     return args
 
 
