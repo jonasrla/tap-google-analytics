@@ -81,8 +81,8 @@ class GAClient:
 
         (self.dimensions_ref, self.metrics_ref) = self.fetch_metadata()
 
-        LOGGER.info(
-            f"Client queries from {self.start_date} to {self.end_date}")
+        LOGGER.debug(
+            f"GAClient time interval from {self.start_date} to {self.end_date}")
 
     def initialize_credentials(self, config):
         if config.get('oauth_credentials', {}).get('access_token', None):
