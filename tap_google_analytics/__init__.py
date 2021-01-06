@@ -98,6 +98,7 @@ def sync(config, state, catalog):
                 #  fetch records without errors
                 singer.write_schema(stream_id, stream_schema, key_properties)
                 singer.write_records(stream_id, results)
+                singer.write_state({"end_date": client.end_date})
             except TapGaInvalidArgumentError as e:
                 errors_encountered = True
                 LOGGER.error(
