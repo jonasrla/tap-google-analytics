@@ -92,7 +92,6 @@ def sync(config, state, catalog):
 
             try:
                 report_definition = ReportsHelper.get_report_definition(stream)
-                LOGGER.info('Got report definition')
                 results = client.process_stream(report_definition)
 
                 # we write the schema message after we are sure that we could
