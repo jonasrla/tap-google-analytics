@@ -236,20 +236,12 @@ class GAClient:
                 raise error.TapGaUnknownError(e._get_reason())
 
     def generate_report_definition(self, stream):
-        report_definition = {
-            'metrics': [],
-            'dimensions': []
+        return {
+            'metrics': [{'expression': metric.replace("ga_", "ga:")}
+                        for metric in stream['metrics']],
+            'dimensions': [{'name': dimension.replace("ga_", "ga:")}
+                           for dimension in stream['dimensions']]
         }
-
-        for dimension in stream['dimensions']:
-            report_definition['dimensions'].append(
-                {'name': dimension.replace("ga_", "ga:")})
-
-        for metric in stream['metrics']:
-            report_definition['metrics'].append(
-                {"expression": metric.replace("ga_", "ga:")})
-
-        return report_definition
 
     @backoff.on_exception(backoff.expo,
                           (HttpError, socket.timeout),
