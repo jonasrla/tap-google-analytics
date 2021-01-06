@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 import sys
 import backoff
 import logging
@@ -11,7 +12,7 @@ from apiclient.errors import HttpError
 from oauth2client.service_account import ServiceAccountCredentials
 from oauth2client.client import GoogleCredentials
 
-from tap_google_analytics.error import *
+from tap_google_analytics import error
 
 SCOPES = ['https://www.googleapis.com/auth/analytics.readonly']
 
@@ -29,11 +30,14 @@ LOGGER = singer.get_logger()
 
 
 def error_reason(e):
-    # For a given HttpError object from the googleapiclient package, this returns the first reason code from
-    # https://developers.google.com/analytics/devguides/reporting/core/v4/errors if the error's HTTP response
-    # body is valid json. Note that the code samples for Python on that page are actually incorrect, and that
-    # e.resp.reason is the HTTP transport level reason associated with the status code, like "Too Many Requests"
-    # for a 429 response code, whereas we want the reason field of the first error in the JSON response body.
+    # For a given HttpError object from the googleapiclient package, this
+    # returns the first reason code from
+    # https://developers.google.com/analytics/devguides/reporting/core/v4/errors
+    # if the error's HTTP response body is valid json. Note that the code
+    # samples for Python on that page are actually incorrect, and that
+    # e.resp.reason is the HTTP transport level reason associated with the
+    # status code, like "Too Many Requests" for a 429 response code, whereas we
+    # want the reason field of the first error in the JSON response body.
 
     reason = ''
     try:
@@ -59,21 +63,27 @@ def is_fatal_error(error):
     if reason in NON_FATAL_ERRORS:
         return False
 
-    LOGGER.critical("Received fatal error %s, reason=%s, status=%s", error, reason, status)
+    LOGGER.critical(
+        "Received fatal error %s, reason=%s, status=%s", error, reason, status)
     return True
 
 
 class GAClient:
-    def __init__(self, config):
+    def __init__(self, config, state):
+        yesterday = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
         self.view_id = config['view_id']
-        self.start_date = config['start_date']
-        self.end_date = config['end_date']
+        self.start_date = state.get('end_date') or config['start_date']
+        self.end_date = config['end_date'] or yesterday
         self.quota_user = config.get('quota_user', None)
 
         self.credentials = self.initialize_credentials(config)
         self.analytics = self.initialize_analyticsreporting()
 
         (self.dimensions_ref, self.metrics_ref) = self.fetch_metadata()
+
+        LOGGER.debug(
+            f"GAClient time interval from {self.start_date} to \
+{self.end_date}")
 
     def initialize_credentials(self, config):
         if config.get('oauth_credentials', {}).get('access_token', None):
@@ -82,12 +92,14 @@ class GAClient:
                 refresh_token=config['oauth_credentials']['refresh_token'],
                 client_id=config['oauth_credentials']['client_id'],
                 client_secret=config['oauth_credentials']['client_secret'],
-                token_expiry=None,  # let the library refresh the token if it is expired
+                # let the library refresh the token if it is expired
+                token_expiry=None,
                 token_uri="https://accounts.google.com/o/oauth2/token",
                 user_agent="tap-google-analytics (via singer.io)"
             )
         else:
-            return ServiceAccountCredentials.from_json_keyfile_dict(config['client_secrets'], SCOPES)
+            return ServiceAccountCredentials \
+                .from_json_keyfile_dict(config['client_secrets'], SCOPES)
 
     def initialize_analyticsreporting(self):
         """Initializes an Analytics Reporting API V4 service object.
@@ -105,8 +117,8 @@ class GAClient:
         Returns:
           A map of (dimensions, metrics) hashes
 
-          Each available dimension can be found in dimensions with its data type
-            as the value. e.g. dimensions['ga:userType'] == STRING
+          Each available dimension can be found in dimensions with its data
+            type as the value. e.g. dimensions['ga:userType'] == STRING
 
           Each available metric can be found in metrics with its data type
             as the value. e.g. metrics['ga:sessions'] == INTEGER
@@ -114,13 +126,14 @@ class GAClient:
         metrics = {}
         dimensions = {}
 
-        # Initialize a Google Analytics API V3 service object and build the service object.
-        # This is needed in order to dynamically fetch the metadata for available
-        #   metrics and dimensions.
+        # Initialize a Google Analytics API V3 service object and build the
+        # service object. This is needed in order to dynamically fetch the
+        # metadata for available metrics and dimensions.
         # (those are not provided in the Analytics Reporting API V4)
         service = build('analytics', 'v3', credentials=self.credentials)
 
-        results = service.metadata().columns().list(reportType='ga', quotaUser=self.quota_user).execute()
+        results = service.metadata().columns().list(
+            reportType='ga', quotaUser=self.quota_user).execute()
 
         columns = results.get('items', [])
 
@@ -144,19 +157,31 @@ class GAClient:
         """
         try:
             if type == 'dimension':
-                if attribute.startswith(('ga:dimension', 'ga:customVarName', 'ga:customVarValue')):
+                if attribute.startswith(('ga:dimension',
+                                         'ga:customVarName',
+                                         'ga:customVarValue')):
                     # Custom Google Analytics Dimensions that are not part of
                     #  self.dimensions_ref. They are always strings
                     return 'string'
 
                 attr_type = self.dimensions_ref[attribute]
             elif type == 'metric':
-                # Custom Google Analytics Metrics {ga:goalXXStarts, ga:metricXX, ... }
-                # We always treat them as as strings as we can not be sure of their data type
-                if attribute.startswith('ga:goal') and attribute.endswith(('Starts', 'Completions', 'Value', 'ConversionRate', 'Abandons', 'AbandonRate')):
+                # Custom Google Analytics Metrics
+                # {ga:goalXXStarts, ga:metricXX, ... }
+                # We always treat them as as strings as we can not be sure of
+                # their data type
+                if attribute.startswith('ga:goal') and \
+                        attribute.endswith(('Starts',
+                                            'Completions',
+                                            'Value',
+                                            'ConversionRate',
+                                            'Abandons',
+                                            'AbandonRate')):
                     return 'string'
-                elif attribute.startswith('ga:searchGoal') and attribute.endswith('ConversionRate'):
-                    # Custom Google Analytics Metrics ga:searchGoalXXConversionRate
+                elif attribute.startswith('ga:searchGoal') and \
+                        attribute.endswith('ConversionRate'):
+                    # Custom Google Analytics Metrics
+                    # ga:searchGoalXXConversionRate
                     return 'string'
                 elif attribute.startswith(('ga:metric', 'ga:calcMetric')):
                     return 'string'
@@ -173,7 +198,9 @@ class GAClient:
 
         if attr_type == 'INTEGER':
             data_type = 'integer'
-        elif attr_type == 'FLOAT' or attr_type == 'PERCENT' or attr_type == 'TIME':
+        elif attr_type == 'FLOAT' or \
+                attr_type == 'PERCENT' or \
+                attr_type == 'TIME':
             data_type = 'number'
 
         return data_type
@@ -200,32 +227,27 @@ class GAClient:
             # https://developers.google.com/analytics/devguides/reporting/core/v4/errors
 
             reason = error_reason(e)
-            if reason == 'userRateLimitExceeded' or reason == 'rateLimitExceeded':
-                raise TapGaRateLimitError(e._get_reason())
+            if reason == 'userRateLimitExceeded' or \
+                    reason == 'rateLimitExceeded':
+                raise error.TapGaRateLimitError(e._get_reason())
             elif reason == 'quotaExceeded':
-                raise TapGaQuotaExceededError(e._get_reason())
+                raise error.TapGaQuotaExceededError(e._get_reason())
             elif e.resp.status == 400:
-                raise TapGaInvalidArgumentError(e._get_reason())
+                raise error.TapGaInvalidArgumentError(e._get_reason())
             elif e.resp.status in [401, 402]:
-                raise TapGaAuthenticationError(e._get_reason())
+                raise error.TapGaAuthenticationError(e._get_reason())
             elif e.resp.status in [500, 503]:
-                raise TapGaBackendServerError(e._get_reason())
+                raise error.TapGaBackendServerError(e._get_reason())
             else:
-                raise TapGaUnknownError(e._get_reason())
+                raise error.TapGaUnknownError(e._get_reason())
 
     def generate_report_definition(self, stream):
-        report_definition = {
-            'metrics': [],
-            'dimensions': []
+        return {
+            'metrics': [{'expression': metric.replace("ga_", "ga:")}
+                        for metric in stream['metrics']],
+            'dimensions': [{'name': dimension.replace("ga_", "ga:")}
+                           for dimension in stream['dimensions']]
         }
-
-        for dimension in stream['dimensions']:
-            report_definition['dimensions'].append({'name': dimension.replace("ga_","ga:")})
-
-        for metric in stream['metrics']:
-            report_definition['metrics'].append({"expression": metric.replace("ga_","ga:")})
-
-        return report_definition
 
     @backoff.on_exception(backoff.expo,
                           (HttpError, socket.timeout),
@@ -240,14 +262,15 @@ class GAClient:
         return self.analytics.reports().batchGet(
             body={
                 'reportRequests': [
-                {
-                    'viewId': self.view_id,
-                    'dateRanges': [{'startDate': self.start_date, 'endDate': self.end_date}],
-                    'pageSize': '1000',
-                    'pageToken': pageToken,
-                    'metrics': report_definition['metrics'],
-                    'dimensions': report_definition['dimensions'],
-                }]
+                    {
+                        'viewId': self.view_id,
+                        'dateRanges': [{'startDate': self.start_date,
+                                        'endDate': self.end_date}],
+                        'pageSize': '1000',
+                        'pageToken': pageToken,
+                        'metrics': report_definition['metrics'],
+                        'dimensions': report_definition['dimensions'],
+                        }]
             },
             quotaUser=self.quota_user
         ).execute()
@@ -265,8 +288,10 @@ class GAClient:
             results: the Analytics Reporting API V4 response as a list of
              dictionaries, e.g.
              [
-              {'ga_date': '20190501', 'ga_30dayUsers': '134420',
-               'report_start_date': '2019-05-01', 'report_end_date': '2019-05-28'},
+              {'ga_date': '20190501',
+               'ga_30dayUsers': '134420',
+               'report_start_date': '2019-05-01',
+               'report_end_date': '2019-05-28'},
                ... ... ...
              ]
         """
@@ -278,7 +303,8 @@ class GAClient:
 
             columnHeader = report.get('columnHeader', {})
             dimensionHeaders = columnHeader.get('dimensions', [])
-            metricHeaders = columnHeader.get('metricHeader', {}).get('metricHeaderEntries', [])
+            metricHeaders = columnHeader.get(
+                'metricHeader', {}).get('metricHeaderEntries', [])
 
             for row in report.get('data', {}).get('rows', []):
                 record = {}
@@ -295,19 +321,21 @@ class GAClient:
                     else:
                         value = dimension
 
-                    record[header.replace("ga:","ga_")] = value
+                    record[header.replace("ga:", "ga_")] = value
 
                 for i, values in enumerate(dateRangeValues):
-                    for metricHeader, value in zip(metricHeaders, values.get('values')):
+                    for metricHeader, value in zip(metricHeaders,
+                                                   values.get('values')):
                         metric_name = metricHeader.get('name')
-                        metric_type = self.lookup_data_type('metric', metric_name)
+                        metric_type = self.lookup_data_type(
+                            'metric', metric_name)
 
                         if metric_type == 'integer':
                             value = int(value)
                         elif metric_type == 'number':
                             value = float(value)
 
-                        record[metric_name.replace("ga:","ga_")] = value
+                        record[metric_name.replace("ga:", "ga_")] = value
 
                 # Also add the [start_date,end_date) used for the report
                 record['report_start_date'] = self.start_date
