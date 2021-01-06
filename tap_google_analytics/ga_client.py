@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 import sys
 import backoff
 import logging
@@ -68,10 +69,11 @@ def is_fatal_error(error):
 
 
 class GAClient:
-    def __init__(self, config):
+    def __init__(self, config, state):
+        yesterday = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
         self.view_id = config['view_id']
-        self.start_date = config['start_date']
-        self.end_date = config['end_date']
+        self.start_date = state.get('end_date') or config['start_date']
+        self.end_date = config['end_date'] or yesterday
         self.quota_user = config.get('quota_user', None)
 
         self.credentials = self.initialize_credentials(config)

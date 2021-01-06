@@ -76,7 +76,7 @@ def sync(config, state, catalog):
 
     selected_stream_ids = get_selected_streams(catalog)
 
-    client = GAClient(config)
+    client = GAClient(config, state)
 
     # Loop over streams in catalog
     for stream in catalog['streams']:
