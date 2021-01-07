@@ -206,6 +206,24 @@ class GAClient:
         return data_type
 
     def process_stream(self, stream):
+        """
+        Retrives data from Google Analytics
+        Inputs:
+            stream:
+                {"metrics": ["ga_sessions", ...],
+                 "dimensions": ["ga_sourceMedium", ...]
+                }
+
+        Returns:
+            records:
+                [
+                 {'ga_date': '20190501',
+                  'ga_30dayUsers': '134420',
+                  'report_start_date': '2019-05-01',
+                  'report_end_date': '2019-05-28'},
+                  ... ... ...
+                ]
+        """
         try:
             records = []
             report_definition = self.generate_report_definition(stream)
