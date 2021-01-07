@@ -89,7 +89,7 @@ def sync(config, state, catalog):
             stream_metadata, (), "table-key-properties")
 
         if stream_id in selected_stream_ids:
-            LOGGER.info('Syncing stream: ' + stream_id)
+            LOGGER.info('Syncing stream: ' + stream_id + ", view: " + view_id)
 
             try:
                 report_definition = ReportsHelper.get_report_definition(stream)
