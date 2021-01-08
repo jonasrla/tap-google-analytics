@@ -89,6 +89,8 @@ def sync(config, state, catalog):
 
         if stream_id in selected_stream_ids:
             LOGGER.info('Syncing stream: ' + stream_id + ", view: " + view_id)
+            LOGGER.info(f'Date interval from {client.start_date} to \
+{client.end_date}')
 
             try:
                 report_definition = ReportsHelper.get_report_definition(stream)
