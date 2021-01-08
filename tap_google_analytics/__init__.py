@@ -17,8 +17,7 @@ from tap_google_analytics.error import TapGaInvalidArgumentError, \
                                        TapGaUnknownError
 
 REQUIRED_CONFIG_KEYS = [
-    "start_date",
-    "view_id"
+    "start_date"
 ]
 
 LOGGER = singer.get_logger()
@@ -76,10 +75,11 @@ def sync(config, state, catalog):
 
     selected_stream_ids = get_selected_streams(catalog)
 
-    client = GAClient(config, state)
-
     # Loop over streams in catalog
     for stream in catalog['streams']:
+        view_id = stream['view_id']
+        client = GAClient(view_id, config, state)
+
         stream_id = stream['tap_stream_id']
         stream_schema = stream['schema']
 
@@ -88,7 +88,9 @@ def sync(config, state, catalog):
             stream_metadata, (), "table-key-properties")
 
         if stream_id in selected_stream_ids:
-            LOGGER.info('Syncing stream: ' + stream_id)
+            LOGGER.info('Syncing stream: ' + stream_id + ", view: " + view_id)
+            LOGGER.info(f'Date interval from {client.start_date} to \
+{client.end_date}')
 
             try:
                 report_definition = ReportsHelper.get_report_definition(stream)
@@ -98,7 +100,9 @@ def sync(config, state, catalog):
                 #  fetch records without errors
                 singer.write_schema(stream_id, stream_schema, key_properties)
                 singer.write_records(stream_id, results)
-                singer.write_state({"end_date": client.end_date})
+                state = singer.write_bookmark(
+                    state, view_id, 'end_date', client.end_date)
+                singer.write_state(state)
             except TapGaInvalidArgumentError as e:
                 errors_encountered = True
                 LOGGER.error(
@@ -155,9 +159,9 @@ def process_args():
             "tap-google-analytics: a valid start_date must be provided.")
         sys.exit(1)
 
-    if not args.config.get('view_id'):
+    if not (args.config.get('reports') or args.catalog):
         LOGGER.critical(
-            "tap-google-analytics: a valid view_id must be provided.")
+            "tap-google-analytics: a catalog or report must be provided.")
         sys.exit(1)
 
     if not args.config.get('key_file_location') and \

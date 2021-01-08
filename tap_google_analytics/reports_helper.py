@@ -12,7 +12,7 @@ class ReportsHelper:
 
         # Fetch the valid (dimension, metric)
         # names and their types from GAClient
-        self.client = GAClient(config, dict())
+        self.client = GAClient(config.get("view_id"), config, dict())
 
     def generate_catalog(self):
         """
@@ -59,6 +59,7 @@ class ReportsHelper:
         for report in self.reports_definition:
             # For each report in reports_definition generate a Catalog Entry
             schema_name = report['name']
+            view_id = report.get('view_id', self.client.view_id)
 
             schema = {
                 "type": ["null", "object"],
@@ -147,6 +148,7 @@ class ReportsHelper:
             catalog_entry = {
                 'stream': schema_name,
                 'tap_stream_id': schema_name,
+                'view_id': view_id,
                 'schema': schema,
                 'metadata': metadata
             }
