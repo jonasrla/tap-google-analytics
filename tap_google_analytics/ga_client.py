@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import timedelta, datetime
 import sys
 import backoff
 import logging
@@ -23,6 +23,8 @@ NON_FATAL_ERRORS = [
   'internalServerError',
   'backendError'
 ]
+
+DATE_PATTERN = "%Y-%m-%d"
 
 # Silence the discovery_cache errors
 logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
@@ -70,10 +72,18 @@ def is_fatal_error(error):
 
 class GAClient:
     def __init__(self, view_id, config, state):
-        yesterday = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+        yesterday = (datetime.today() - timedelta(days=1)
+                     ).strftime(DATE_PATTERN)
+
+        state_date = state.get('bookmarks',
+                               {}).get(view_id, {}).get('end_date')
+
+        if state_date is not None:
+            state_date = (datetime.strptime(state_date, DATE_PATTERN)
+                          + timedelta(days=1)).strftime(DATE_PATTERN)
+
         self.view_id = view_id
-        self.start_date = state.get('bookmarks', {}).get(view_id, {}).get(
-            'end_date') or config['start_date']
+        self.start_date = state_date or config['start_date']
         self.end_date = config['end_date'] or yesterday
         self.quota_user = config.get('quota_user', None)
 
