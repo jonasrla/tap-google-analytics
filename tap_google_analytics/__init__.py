@@ -98,7 +98,9 @@ def sync(config, state, catalog):
                 #  fetch records without errors
                 singer.write_schema(stream_id, stream_schema, key_properties)
                 singer.write_records(stream_id, results)
-                singer.write_state({view_id: {"end_date": client.end_date}})
+                state = singer.write_bookmark(
+                    state, view_id, 'end_date', client.end_date)
+                singer.write_state(state)
             except TapGaInvalidArgumentError as e:
                 errors_encountered = True
                 LOGGER.error(
@@ -155,9 +157,9 @@ def process_args():
             "tap-google-analytics: a valid start_date must be provided.")
         sys.exit(1)
 
-    if not (args.config.get('view_id') or args.config.get('reports')):
+    if not (args.config.get('reports') or args.catalog):
         LOGGER.critical(
-            "tap-google-analytics: a valid view_id must be provided.")
+            "tap-google-analytics: a catalog or report must be provided.")
         sys.exit(1)
 
     if not args.config.get('key_file_location') and \
