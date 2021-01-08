@@ -17,8 +17,7 @@ from tap_google_analytics.error import TapGaInvalidArgumentError, \
                                        TapGaUnknownError
 
 REQUIRED_CONFIG_KEYS = [
-    "start_date",
-    "view_id"
+    "start_date"
 ]
 
 LOGGER = singer.get_logger()
