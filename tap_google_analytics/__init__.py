@@ -155,7 +155,7 @@ def process_args():
             "tap-google-analytics: a valid start_date must be provided.")
         sys.exit(1)
 
-    if not args.config.get('view_id'):
+    if not (args.config.get('view_id') or args.config.get('reports')):
         LOGGER.critical(
             "tap-google-analytics: a valid view_id must be provided.")
         sys.exit(1)
