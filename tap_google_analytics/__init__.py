@@ -79,7 +79,7 @@ def sync(config, state, catalog):
     # Loop over streams in catalog
     for stream in catalog['streams']:
         view_id = stream['view_id']
-        name = stream['name']
+        name = stream['stream']
         client = GAClient(name, view_id, config, state)
 
         stream_id = stream['tap_stream_id']
