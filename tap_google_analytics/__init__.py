@@ -79,7 +79,8 @@ def sync(config, state, catalog):
     # Loop over streams in catalog
     for stream in catalog['streams']:
         view_id = stream['view_id']
-        client = GAClient(view_id, config, state)
+        name = stream['name']
+        client = GAClient(name, view_id, config, state)
 
         stream_id = stream['tap_stream_id']
         stream_schema = stream['schema']
@@ -102,7 +103,7 @@ def sync(config, state, catalog):
                 singer.write_schema(stream_id, stream_schema, key_properties)
                 singer.write_records(stream_id, results)
                 state = singer.write_bookmark(
-                    state, view_id, 'end_date', client.end_date)
+                    state, name, 'end_date', client.end_date)
                 singer.write_state(state)
             except TapGaInvalidArgumentError as e:
                 errors_encountered = True

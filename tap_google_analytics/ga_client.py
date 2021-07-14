@@ -72,17 +72,18 @@ def is_fatal_error(error):
 
 
 class GAClient:
-    def __init__(self, view_id, config, state):
+    def __init__(self, name, view_id, config, state):
         yesterday = (datetime.today() - timedelta(days=1)
                      ).strftime(DATE_PATTERN)
 
         state_date = state.get('bookmarks',
-                               {}).get(view_id, {}).get('end_date')
+                               {}).get(name, {}).get('end_date')
 
         if state_date is not None:
             state_date = (datetime.strptime(state_date, DATE_PATTERN)
                           + timedelta(days=1)).strftime(DATE_PATTERN)
 
+        self.name = name
         self.view_id = view_id
         self.start_date = state_date or config['start_date']
         self.end_date = config['end_date'] or yesterday
