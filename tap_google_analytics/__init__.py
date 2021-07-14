@@ -177,6 +177,9 @@ oauth_credentials object must be provided.")
 
     if 'end_date' in args.config and not args.config.get('end_date'):
         del args.config['end_date']
+    
+    if 'sliced' in args.config and not args.config.get('sliced'):
+        del args.config['sliced']
 
     # Process the [start_date, end_date) so that they define an open date
     # window that ends yesterday if end_date is not defined

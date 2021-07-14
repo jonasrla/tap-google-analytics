@@ -86,6 +86,7 @@ class GAClient:
         self.start_date = state_date or config['start_date']
         self.end_date = config['end_date'] or yesterday
         self.quota_user = config.get('quota_user', None)
+        self.is_sliced = config.get('sliced', False)
 
         self.credentials = self.initialize_credentials(config)
         self.analytics = self.initialize_analyticsreporting()
@@ -216,6 +217,13 @@ class GAClient:
 
         return data_type
 
+    def get_dates(self ):
+        date = datetime.strftime(self.start_date, "%Y-%m-%d")
+        while date < datetime.strftime(self.end_date, "%Y-%m-%d"):
+            yield date.strptime("%Y-%m-%d")
+            date += timedelta(days=1)
+
+
     def process_stream(self, stream):
         """
         Retrives data from Google Analytics
@@ -241,9 +249,15 @@ class GAClient:
             nextPageToken = None
 
             while True:
-                response = self.query_api(report_definition, nextPageToken)
-                (nextPageToken, results) = self.process_response(response)
-                records.extend(results)
+                if self.is_sliced:
+                    for d in self.get_dates():
+                        response = self.query_api(report_definition, nextPageToken, d)
+                        (nextPageToken, results) = self.process_response(response)
+                        records.extend(results)
+                else:
+                    response = self.query_api(report_definition, nextPageToken)
+                    (nextPageToken, results) = self.process_response(response)
+                    records.extend(results)
 
                 # Keep on looping as long as we have a nextPageToken
                 if nextPageToken is None:
@@ -282,19 +296,21 @@ class GAClient:
                           (HttpError, socket.timeout),
                           max_tries=9,
                           giveup=is_fatal_error)
-    def query_api(self, report_definition, pageToken=None):
+    def query_api(self, report_definition, pageToken=None, date=None):
         """Queries the Analytics Reporting API V4.
 
         Returns:
             The Analytics Reporting API V4 response.
         """
+        start_date = date or self.start_date
+        end_date = date or self.end_date
         return self.analytics.reports().batchGet(
             body={
                 'reportRequests': [
                     {
                         'viewId': self.view_id,
-                        'dateRanges': [{'startDate': self.start_date,
-                                        'endDate': self.end_date}],
+                        'dateRanges': [{'startDate': start_date,
+                                        'endDate': end_date}],
                         'pageSize': '1000',
                         'pageToken': pageToken,
                         'metrics': report_definition['metrics'],
