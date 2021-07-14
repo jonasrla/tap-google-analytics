@@ -12,7 +12,7 @@ class ReportsHelper:
 
         # Fetch the valid (dimension, metric)
         # names and their types from GAClient
-        self.client = GAClient(config.get("view_id"), config, dict())
+        self.client = GAClient(None, config.get("view_id"), config, dict())
 
     def generate_catalog(self):
         """
