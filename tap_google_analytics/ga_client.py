@@ -1,5 +1,6 @@
 from datetime import timedelta, datetime
 import sys
+from os import getenv
 import backoff
 import logging
 import json
@@ -29,7 +30,7 @@ DATE_PATTERN = "%Y-%m-%d"
 # Silence the discovery_cache errors
 logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
 LOGGER = singer.get_logger()
-
+LOGGER.setLevel(getenv("LOGGER_LEVEL", "INFO"))
 
 def error_reason(e):
     # For a given HttpError object from the googleapiclient package, this

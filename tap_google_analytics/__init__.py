@@ -22,7 +22,7 @@ REQUIRED_CONFIG_KEYS = [
 ]
 
 LOGGER = singer.get_logger()
-LOGGER.set_level(getenv("LOGGER_LEVEL", "INFO"))
+LOGGER.setLevel(getenv("LOGGER_LEVEL", "INFO"))
 
 def discover(config):
     # Load the reports json file
