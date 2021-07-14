@@ -2,6 +2,7 @@
 import datetime
 import json
 import sys
+from os import getenv
 
 from pathlib import Path
 
@@ -21,7 +22,7 @@ REQUIRED_CONFIG_KEYS = [
 ]
 
 LOGGER = singer.get_logger()
-
+LOGGER.set_level(getenv("LOGGER_LEVEL", "INFO"))
 
 def discover(config):
     # Load the reports json file
