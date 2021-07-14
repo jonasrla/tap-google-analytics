@@ -97,7 +97,7 @@ class GAClient:
         LOGGER.debug(
             f"GAClient view_id: {view_id}, time interval from {self.start_date} to \
 {self.end_date}")
-        LOGGER.debug(f'TEMP DEBUG GA_CLIENTE: view_id:{view_id}, type(view_id){view_id}, state_date: {state_date}, state: {state}')
+        LOGGER.debug(f'TEMP DEBUG GA_CLIENTE: view_id:{view_id}, type(view_id): {type(view_id)}, state_date: {state_date}, state: {state}')
 
 
     def initialize_credentials(self, config):
