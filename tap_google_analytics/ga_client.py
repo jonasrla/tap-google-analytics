@@ -217,10 +217,10 @@ class GAClient:
 
         return data_type
 
-    def get_dates(self ):
-        date = datetime.strftime(self.start_date, "%Y-%m-%d")
-        while date < datetime.strftime(self.end_date, "%Y-%m-%d"):
-            yield date.strptime("%Y-%m-%d")
+    def get_dates(self):
+        date = datetime.strptime(self.start_date, "%Y-%m-%d")
+        while date < datetime.strptime(self.end_date, "%Y-%m-%d"):
+            yield date.strftime("%Y-%m-%d")
             date += timedelta(days=1)
 
 
