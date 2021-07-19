@@ -184,7 +184,7 @@ oauth_credentials object must be provided.")
     args.config['start_date'] = utils.strftime(start_date, '%Y-%m-%d')
 
     end_date = args.config.get('end_date', utils.strftime(utils.now()))
-    end_date = utils.strptime_to_utc(end_date) - datetime.timedelta(days=1)
+    end_date = utils.strptime_to_utc(end_date) - datetime.timedelta(days=2)
     args.config['end_date'] = utils.strftime(end_date, '%Y-%m-%d')
 
     if end_date < start_date:
